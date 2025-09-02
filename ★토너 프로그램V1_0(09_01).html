@@ -3,104 +3,114 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>체육 수업 토너먼트 관리 프로그램 · 개선판 V2.5</title>
+  <title>토너먼트 경기 관리 프로그램</title>
   <style>
     :root{
-      --bg:#f7f8fb; --card:#ffffff; --ink:#1b1f23; --muted:#6b7280; --accent:#2563eb;
-      --line:#d1d5db; --win:#16a34a; --lose:#ef4444; --focus:#3b82f6;
+      --bg-dark: #0d1117;
+      --sidebar-bg: #161b22;
+      --main-bg: #0d1117;
+      --card-bg: #161b22;
+      --input-bg: #0d1117;
+      --ink: #e6edf3;
+      --ink-muted: #7d8590;
+      --accent: #58a6ff;
+      --accent-fg: #0d1117;
+      --line: #30363d;
+      --win: #3fb950;
+      --lose: #f85149;
+      --focus: #58a6ff;
 
-      /* 라운드별 완료 색상 정의 */
-      --completed-r0: #e7f8f0; --completed-r0-border: #a7e0c1;
-      --completed-r1: #e6f5fa; --completed-r1-border: #9fd7eb;
-      --completed-r2: #eef2ff; --completed-r2-border: #b8c7ff;
-      --completed-r3: #f5f3ff; --completed-r3-border: #dcd3ff;
-      --completed-r4: #faf5ff; --completed-r4-border: #e9d5ff;
+      --completed-r0: rgba(63, 185, 80, 0.1); --completed-r0-border: rgba(63, 185, 80, 0.5);
+      --completed-r1: rgba(88, 166, 255, 0.1); --completed-r1-border: rgba(88, 166, 255, 0.5);
+      --completed-r2: rgba(173, 139, 255, 0.1); --completed-r2-border: rgba(173, 139, 255, 0.5);
+      --completed-r3: rgba(255, 122, 171, 0.1); --completed-r3-border: rgba(255, 122, 171, 0.5);
+      --completed-r4: rgba(247, 189, 70, 0.1); --completed-r4-border: rgba(247, 189, 70, 0.5);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Apple SD Gothic Neo,Malgun Gothic,"Noto Sans KR",sans-serif;
-      color:var(--ink); background:var(--bg);
+      color:var(--ink); background:var(--bg-dark);
+      font-size: 14px;
     }
-    header{
-      position:sticky; top:0; z-index:20; background:var(--card); border-bottom:1px solid var(--line);
-      padding:10px 16px; display:flex; align-items:center; gap:12px;
-    }
-    header h1{font-size:18px; margin:0}
-    header .meta{font-size:12px; color:var(--muted)}
-    main{display:flex; gap:16px; padding:16px;}
-    .panel{
-      background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; height:fit-content;
-      transition: opacity .3s ease;
-    }
-    .panel.disabled {
-      opacity: 0.5;
-      pointer-events: none;
-    }
-    .panel h2{font-size:16px; margin:6px 0 10px}
-    .field{margin-bottom:12px}
-    .field label{display:block; font-size:13px; color:#374151; margin-bottom:6px}
-    .field input[type="text"], .field textarea, .field select{
-      width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; background:#fff; font-size:14px;
-    }
-    .hint{font-size:12px; color:var(--muted); margin-top:4px}
-    .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-    .row .chip{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid var(--line); border-radius:20px; cursor:pointer; user-select:none}
-    .row .chip input{margin:0}
-    .btn{
-      display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; border:1px solid var(--line);
-      background:#fff; color:#111827; cursor:pointer; font-weight:600; transition:.2s;
-    }
-    .btn.primary{background:var(--accent); color:#fff; border-color:var(--accent)}
-    .btn.danger{background:#fff5f5; color:#b91c1c; border-color:#fecaca}
-    .btn:disabled{opacity:.6; cursor:not-allowed}
-    .btn + .btn{margin-left:8px}
 
-    .config-view { display: flex; flex-direction: column; gap: 16px; flex:0 0 360px; }
-    #tournamentList { display: flex; flex-direction: column; gap: 8px; max-height: 25vh; overflow-y: auto; padding: 4px; margin-bottom: 10px; }
+    /* Main Layout */
+    .app-container{ display:flex; height:100vh; }
+    .sidebar{
+      flex: 0 0 320px; background: var(--sidebar-bg); border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; padding: 24px; gap: 20px;
+    }
+    .main-content{ flex: 1; padding: 24px; display:flex; flex-direction:column; overflow: hidden; }
+
+    /* Sidebar */
+    .sidebar-header h2 { font-size: 20px; margin: 0 0 16px 0; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+    .new-tournament-form { display: flex; flex-direction: column; gap: 10px; }
+    .sidebar-footer { margin-top: auto; font-size: 12px; color: var(--ink-muted); text-align: center; }
+
+    /* Main Content Header */
+    .main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-shrink: 0; }
+    .main-header h1 { font-size: 24px; margin: 0; }
+    .theme-toggle { background: none; border: none; color: var(--ink-muted); cursor: pointer; padding: 4px; }
+    .theme-toggle svg { width: 20px; height: 20px; }
+
+    /* Placeholder */
+    .placeholder-view {
+      flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
+      color: var(--ink-muted);
+    }
+    .placeholder-content { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .placeholder-content svg { width: 64px; height: 64px; }
+    .placeholder-content h3 { font-size: 20px; margin: 0; color: var(--ink); }
+    .placeholder-content p { margin: 0; }
+
+    /* Generic Controls */
+    .field{margin-bottom:12px}
+    .field label{display:block; font-size:13px; color:var(--ink-muted); margin-bottom:6px}
+    .field input[type="text"], .field textarea, .field select{
+      width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+      background:var(--input-bg); font-size:14px; color: var(--ink);
+    }
+    .field input[type="text"]:focus, .field textarea:focus { outline: 2px solid var(--focus); border-color: var(--focus); }
+    .btn{
+      display:inline-flex; align-items:center; justify-content: center; gap:8px; padding:10px 14px;
+      border-radius:8px; border:1px solid var(--line);
+      background: #21262d; color: var(--ink); cursor:pointer; font-weight:600; transition:.2s;
+    }
+    .btn.primary{background:var(--accent); color:var(--accent-fg); border-color:var(--accent)}
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .hint{font-size:12px; color:var(--ink-muted); margin-top:4px}
+    .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .row .chip{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid var(--line); border-radius:20px; cursor:pointer; user-select:none; font-size: 13px;}
+    .row .chip input{margin:0}
+    .row .chip:has(input:checked) { background-color: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+    /* Tournament List */
+    #tournamentList { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding: 4px; }
     .tournament-card {
       padding: 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer;
       display: flex; justify-content: space-between; align-items: center;
+      transition: background-color .2s;
     }
-    .tournament-card:hover { background: #f9fafb; }
-    .tournament-card.active { border-color: var(--accent); background: #eff6ff; }
+    .tournament-card:hover { background: #21262d; }
+    .tournament-card.active { border-color: var(--accent); background: rgba(88, 166, 255, 0.1); }
     .tournament-card .name { font-weight: 600; }
-    .tournament-card .details { font-size: 12px; color: var(--muted); }
-    .tournament-card .delete-btn { font-size: 12px; padding: 4px 8px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; }
+    .tournament-card .details { font-size: 12px; color: var(--ink-muted); }
+    .tournament-card .delete-btn { font-size: 12px; padding: 4px 8px; background: rgba(248, 81, 73, 0.1); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.4); border-radius: 6px; }
 
+    /* Bracket View */
     .bracket-wrap{
-      position:relative; flex:1 1 auto; min-height:80vh; background:var(--card); border:1px solid var(--line);
-      border-radius:10px; padding:16px; overflow:auto;
+      position:relative; flex:1;
+      border:1px solid var(--line); border-radius:10px; padding:16px; overflow:auto;
+      background-color: var(--card-bg);
     }
     .svg-layer{position:absolute; inset:0; pointer-events:none}
-    
-    .rounds {
-        display: flex;
-        align-items: flex-start;
-        gap: 60px; /* 라운드 간 간격 */
-    }
-    .round {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-around; /* 그룹들을 균등하게 배분 */
-        flex-grow: 1;
-        min-width: 240px;
-    }
-    .round-title {
-        font-weight: 700; font-size: 14px; color: var(--muted);
-        text-align: center; margin-bottom: 16px;
-    }
-    .match-group {
-        display: flex;
-        flex-direction: column;
-        justify-content: center; /* 그룹 내 매치카드 중앙 정렬 */
-        flex-grow: 1;
-        gap: 16px; /* 1라운드에서 매치카드 간 간격 */
-    }
-    
-    /* 1. min-height 속성 제거 */
+    .rounds { display: flex; align-items: flex-start; gap: 60px; }
+    .round { display: flex; flex-direction: column; justify-content: space-around; flex-grow: 1; min-width: 240px; }
+    .round-title { font-weight: 700; font-size: 14px; color: var(--ink-muted); text-align: center; margin-bottom: 16px; }
+    .match-group { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; gap: 16px; }
+
     .match{
-      background:#fff; border:1px solid var(--line); border-left:4px solid transparent; border-radius:10px; padding:8px; position:relative;
+      background: var(--bg-dark); border:1px solid var(--line); border-left:4px solid transparent; border-radius:10px; padding:8px; position:relative;
       box-shadow:0 1px 2px rgba(0,0,0,.04); transition: border .2s, background-color .2s;
     }
     .match.completed.completed-r0 { background-color: var(--completed-r0); border-color: var(--completed-r0-border); }
@@ -108,78 +118,62 @@
     .match.completed.completed-r2 { background-color: var(--completed-r2); border-color: var(--completed-r2-border); }
     .match.completed.completed-r3 { background-color: var(--completed-r3); border-color: var(--completed-r3-border); }
     .match.completed.completed-r4 { background-color: var(--completed-r4); border-color: var(--completed-r4-border); }
-    
+
     .teams{display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center}
-    .team{
-      display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; transition:.15s;
-    }
-    .team.win{background:#f0fdf4; font-weight: 600;}
-    .team.lose{opacity: .6;}
-    .win-badge {
-        color: var(--accent);
-        font-weight: bold;
-        font-size: 12px;
-        margin-left: auto;
-        padding-left: 8px;
-    }
-    .bye-badge {
-        color: var(--muted);
-        font-weight: bold;
-        font-size: 12px;
-        margin-left: auto;
-        padding-left: 8px;
-    }
+    .team{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; transition:.15s; }
+    .team.win{ background:rgba(63, 185, 80, 0.15); font-weight: 600;}
+    .team.lose{opacity: .5;}
+    .win-badge { color: var(--win); font-weight: bold; font-size: 12px; margin-left: auto; padding-left: 8px; }
+    .bye-badge { color: var(--ink-muted); font-weight: bold; font-size: 12px; margin-left: auto; padding-left: 8px; }
     .score{
       width:52px; text-align:center; padding:6px 8px; border:1px solid var(--line); border-radius:8px; font-weight:700;
+      background: var(--input-bg); color: var(--ink);
     }
-    .bye{color:var(--muted); font-size:12px; padding-left:4px}
-    /* 1. footer 여백 관련 속성 제거 */
-    .match-footer{display:flex; justify-content:space-between; align-items:center;}
-
-    .badge{display:inline-block; padding:2px 8px; font-size:11px; border-radius:999px; background:#eef2ff; color:#3730a3}
-    .muted{color:var(--muted)}
+    .bye{color:var(--ink-muted); font-size:12px; padding-left:4px}
     .sr-only{position:absolute; left:-10000px}
   </style>
 </head>
 <body>
-  <header>
-    <h1>체육 수업 토너먼트 관리 프로그램 · 개선판 V2.5</h1>
-    <span class="meta">단판 토너먼트 · 팀 수가 2ⁿ이 아니면 자동 부전승</span>
-  </header>
 
-  <main>
-    <div class="config-view">
-      <section class="panel" aria-labelledby="tournaments-title">
-        <h2 id="tournaments-title">토너먼트 관리</h2>
-        <div id="tournamentList" role="listbox"></div>
-        <button id="btnNew" class="btn primary">새 토너먼트 만들기</button>
-      </section>
-      <section id="settingsPanel" class="panel" aria-labelledby="settings-title">
-        <h2 id="settings-title">설정</h2>
+  <div class="app-container">
+    <aside class="sidebar">
+      <header class="sidebar-header">
+        <h2 id="tournaments-title">토너먼트 목록</h2>
+      </header>
+
+      <div class="new-tournament-form">
+        <input id="newTournamentNameInput" type="text" placeholder="새로운 토너먼트 이름">
+        <button id="btnAddNew" class="btn primary">새로운 토너먼트 추가</button>
+      </div>
+
+      <div id="tournamentList" role="listbox"></div>
+
+      <section id="settingsPanel" style="display:none;">
+        <h3 style="margin: 20px 0 10px; font-size: 16px;">토너먼트 설정</h3>
         <div class="field">
           <label for="tournamentName">토너먼트 이름*</label>
           <input id="tournamentName" type="text" placeholder="예) 2학년 3반 족구 대회" />
         </div>
         <div class="field">
           <label for="sportName">경기 종목*</label>
-          <input id="sportName" type="text" placeholder="예) 족구, 피구, 피구 릴레이" />
+          <input id="sportName" type="text" placeholder="예) 족구, 피구" />
         </div>
         <div class="field">
           <label>토너먼트 형식*</label>
           <div class="row" role="radiogroup" aria-label="토너먼트 형식">
-            <label class="chip"><input type="radio" name="format" value="single" checked> 단판 토너먼트</label>
-            <label class="chip"><input type="radio" name="format" value="roundrobin" disabled> 라운드 로빈(준비중)</label>
+            <label class="chip"><input type="radio" name="format" value="single" checked> 단판</label>
+            <label class="chip"><input type="radio" name="format" value="roundrobin" disabled> 리그(준비중)</label>
           </div>
         </div>
         <div class="field">
           <label for="teamsInput">참가 팀 명단 (한 줄에 한 팀)*</label>
-          <textarea id="teamsInput" rows="8" placeholder="예시)&#10;청팀&#10;백팀&#10;1조 드림팀&#10;2조 어벤져스&#10;자유로운 영혼들"></textarea>
-          <div class="hint">빈 줄/중복은 자동 제거됩니다. 팀 수가 2ⁿ이 아니면 상위 시드에 자동 부전승이 배정됩니다.</div>
+          <textarea id="teamsInput" rows="6" placeholder="청팀&#10;백팀&#10;1조 드림팀&#10;2조 어벤져스"></textarea>
+          <div class="hint">빈 줄/중복은 자동 제거됩니다.</div>
         </div>
         <div class="field">
           <label>시드 배정</label>
           <div class="row" role="radiogroup" aria-label="시드 배정">
-            <label class="chip"><input type="radio" name="seeding" value="input" checked> 입력 순서대로</label>
+            <label class="chip"><input type="radio" name="seeding" value="input" checked> 입력 순</label>
             <label class="chip"><input type="radio" name="seeding" value="random"> 무작위</label>
           </div>
         </div>
@@ -187,21 +181,40 @@
           <button id="btnBuild" class="btn primary">대진표 생성/업데이트</button>
           <button id="btnReset" class="btn">입력 초기화</button>
         </div>
-        <div class="field row">
-           <span class="muted" id="statusText" aria-live="polite"></span>
-        </div>
-        <p class="hint">형식: <span id="formatText" class="badge">-</span> · 팀 수: <span id="teamCountText" class="badge">-</span> · 이름: <span id="nameText" class="badge">-</span></p>
       </section>
-    </div>
 
-    <section class="bracket-wrap" aria-labelledby="bracket-title">
-      <h2 id="bracket-title" class="sr-only">대진표</h2>
-      <div id="roundsContainer">
-          <div id="rounds" class="rounds" role="list"></div>
+      <footer class="sidebar-footer">
+        만든이: 김선폐(laguyo87@gmail.com)
+      </footer>
+    </aside>
+
+    <main class="main-content">
+      <header class="main-header">
+        <h1>토너먼트 경기</h1>
+        <button class="theme-toggle" aria-label="테마 변경">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+      </header>
+
+      <div id="placeholder-view" class="placeholder-view">
+        <div class="placeholder-content">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <h3>생성된 토너먼트를 선택하여 시작하세요</h3>
+          <p>왼쪽에서 토너먼트를 선택하거나 새로 만들어주세요.</p>
+        </div>
       </div>
-      <svg id="svgLayer" class="svg-layer" xmlns="http://www.w3.org/2000/svg"></svg>
-    </section>
-  </main>
+
+      <section id="bracket-container" class="bracket-wrap" style="display: none;">
+        <h2 id="bracket-title" class="sr-only">대진표</h2>
+        <div id="roundsContainer">
+            <div id="rounds" class="rounds" role="list"></div>
+        </div>
+        <svg id="svgLayer" class="svg-layer" xmlns="http://www.w3.org/2000/svg"></svg>
+      </section>
+       <div id="statusText" aria-live="polite" style="margin-top: auto; color: var(--ink-muted); font-size: 12px;"></div>
+    </main>
+  </div>
+
 
   <script>
     const appState = { tournaments: [], activeTournamentId: null, };
@@ -220,15 +233,20 @@
     function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
     function nextPow2(n){ let p=1; while(p<n) p<<=1; return p; }
     
-    function updateHeaderMeta(){
-      if(!state || !state.id){
-        $("#formatText").textContent = "-"; $("#teamCountText").textContent = "-"; $("#nameText").textContent = "-"; return;
-      }
-      $("#formatText").textContent = state.format === "single" ? "단판 토너먼트" : "라운드 로빈";
-      $("#teamCountText").textContent = String(state.teams?.length || "-");
-      $("#nameText").textContent = state.name ? state.name : "-";
+    // --- UI Control ---
+    function showPlaceholder() {
+      $('#placeholder-view').style.display = 'flex';
+      $('#bracket-container').style.display = 'none';
+      $('#settingsPanel').style.display = 'none';
     }
 
+    function showBracketView() {
+      $('#placeholder-view').style.display = 'none';
+      $('#bracket-container').style.display = 'flex';
+      $('#settingsPanel').style.display = 'block';
+    }
+
+    // --- Core Logic ---
     let matchIdSeq = 1;
     function buildSingleElimination(teams){
       const n = teams.length;
@@ -330,7 +348,7 @@
         let message = appState.activeTournamentId 
             ? "설정에서 정보를 입력하고 '대진표 생성' 버튼을 클릭하세요."
             : "새 토너먼트를 만들거나 목록에서 기존 토너먼트를 선택하세요.";
-        wrap.innerHTML = `<p class="muted" style="padding:16px;">${message}</p>`;
+        wrap.innerHTML = `<p style="color:var(--ink-muted);padding:16px;">${message}</p>`;
         $("#svgLayer").innerHTML = "";
         return;
       }
@@ -391,8 +409,6 @@
           </div>
           <input type="number" inputmode="numeric" class="score" min="0" ${m.teamA && m.teamB ? "" : "disabled"} value="${m.scoreB ?? ''}" aria-label="${bName} 점수" />
         </div>
-        <div class="match-footer">
-        </div>
       `;
       const [scoreA, scoreB] = el.querySelectorAll(".score");
       scoreA?.addEventListener("input",(e)=> onScoreInput(m.id, "A", e.target.value));
@@ -431,8 +447,8 @@
           const d = `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
           path.setAttribute("d", d);
           path.setAttribute("fill","none");
-          path.setAttribute("stroke", m.winner ? "var(--accent)" : "#cccccc");
-          path.setAttribute("stroke-width", m.winner ? "2.5" : "2");
+          path.setAttribute("stroke", m.winner ? "var(--accent)" : "#444");
+          path.setAttribute("stroke-width", m.winner ? "2" : "1.5");
           path.setAttribute("stroke-linecap", "round");
           svg.appendChild(path);
         });
@@ -449,15 +465,15 @@
     window.addEventListener("resize", ()=> requestAnimationFrame(drawSvgLines));
     $("#roundsContainer").addEventListener("scroll", ()=> requestAnimationFrame(drawSvgLines), {passive:true});
 
-    const STORAGE_KEY = "tournament_manager_v2.5";
+    const STORAGE_KEY = "tournament_manager_v3.0";
     function doSave(){
       if (!appState.activeTournamentId) return;
       
       state.name = $("#tournamentName").value.trim();
       state.sport = $("#sportName").value.trim();
       state.teams = parseTeams($("#teamsInput").value);
-      state.format = $$("input[name='format']:checked")[0].value;
-      state.seeding = $$("input[name='seeding']:checked")[0].value;
+      state.format = $$("input[name='format']:checked")[0]?.value || 'single';
+      state.seeding = $$("input[name='seeding']:checked")[0]?.value || 'input';
 
       const index = appState.tournaments.findIndex(t => t.id === appState.activeTournamentId);
       if(index > -1) {
@@ -475,9 +491,8 @@
       if(!raw) appState.tournaments = [];
       else try { appState.tournaments = JSON.parse(raw); } catch(e) { appState.tournaments = []; }
       
-      $("#settingsPanel").classList.add("disabled");
       renderTournamentList();
-      renderRounds(); 
+      showPlaceholder();
     }
 
     function doDelete(id_to_delete){
@@ -487,18 +502,17 @@
             appState.activeTournamentId = null;
             state = {};
             resetForm();
-            $("#settingsPanel").classList.add("disabled");
+            showPlaceholder();
         }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.tournaments));
         renderTournamentList();
-        renderRounds();
         setStatus("토너먼트를 삭제했습니다.");
     }
     function renderTournamentList() {
         const listEl = $("#tournamentList");
         listEl.innerHTML = "";
         if (appState.tournaments.length === 0) {
-            listEl.innerHTML = `<p class="muted" style="padding:10px;">저장된 토너먼트가 없습니다.</p>`; return;
+            listEl.innerHTML = `<p style="font-size:13px; color:var(--ink-muted); text-align:center; padding:10px;">저장된 토너먼트가 없습니다.</p>`; return;
         }
         appState.tournaments.forEach(t => {
             const card = document.createElement("div");
@@ -522,7 +536,7 @@
     }
     function build(){
       if (!appState.activeTournamentId) {
-        setStatus("먼저 '새 토너먼트 만들기'를 시작해주세요."); return;
+        setStatus("활성화된 토너먼트가 없습니다."); return;
       }
       state.name = $("#tournamentName").value.trim(); state.sport = $("#sportName").value.trim();
       state.format = $$("input[name='format']:checked")[0].value; state.seeding = $$("input[name='seeding']:checked")[0].value;
@@ -535,17 +549,15 @@
         state.rounds = (state.format === "single") ? buildSingleElimination(state.teams) : [];
         setStatus("대진표를 생성/업데이트했습니다.");
       }
-      updateHeaderMeta(); 
       renderRounds(); 
       doSave();
     }
     function resetForm(){
-      $("#tournamentName").value = ""; $("#sportName").value = ""; $("#teamsInput").value = "";
+      $("#tournamentName").value = state.name ?? ""; $("#sportName").value = ""; $("#teamsInput").value = "";
       $$("input[name='format']").forEach(r=> r.checked = (r.value==="single"));
       $$("input[name='seeding']").forEach(r=> r.checked = (r.value==="input"));
       if(state && state.id) {
-          state = { ...state, name: "", sport:"", teams: [], rounds: [], seeding:"input", format:"single" };
-          updateHeaderMeta();
+          state = { ...state, sport:"", teams: [], rounds: [], seeding:"input", format:"single" };
           renderRounds();
       }
       setStatus("입력 양식을 초기화했습니다.");
@@ -560,32 +572,34 @@
       $$("input[name='format']").forEach(r=> r.checked = (r.value === state.format));
       $$("input[name='seeding']").forEach(r=> r.checked = (r.value === state.seeding));
       
-      $("#settingsPanel").classList.remove("disabled"); 
+      showBracketView();
       renderTournamentList(); 
-      updateHeaderMeta(); 
       renderRounds();
       setStatus(`'${state.name}' 토너먼트를 불러왔습니다.`);
     }
 
     function handleCreateNew() {
-        const newId = generateId();
-        appState.activeTournamentId = newId;
-        state = { id: newId, name: "", sport: "", format: "single", teams: [], seeding: "input", rounds: [] };
-        
-        resetForm();
-        $("#settingsPanel").classList.remove("disabled"); 
-        
-        renderTournamentList(); 
-        updateHeaderMeta(); 
-        renderRounds();
+        const nameInput = $("#newTournamentNameInput");
+        const newName = nameInput.value.trim();
+        if (!newName) {
+            setStatus("새 토너먼트의 이름을 입력하세요.");
+            nameInput.focus();
+            return;
+        }
 
-        $("#tournamentName").focus();
-        setStatus("새 토너먼트 정보를 입력하고 '대진표 생성'을 누르세요.");
+        const newId = generateId();
+        const newTournament = { id: newId, name: newName, sport: "", format: "single", teams: [], seeding: "input", rounds: [] };
+        
+        appState.tournaments.unshift(newTournament);
+        appState.activeTournamentId = newId;
+
+        nameInput.value = "";
+        handleSelectTournament(newId);
     }
     
     $("#btnBuild").addEventListener("click", build);
     $("#btnReset").addEventListener("click", resetForm);
-    $("#btnNew").addEventListener("click", ()=>handleCreateNew());
+    $("#btnAddNew").addEventListener("click", handleCreateNew);
 
     loadApp();
   </script>
