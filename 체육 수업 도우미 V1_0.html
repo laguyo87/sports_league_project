@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>체육 수업 도우미 V1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Light Theme (Default) */
+            --bg-light: #ffffff;
+            --sidebar-bg: #f8fafc; /* Tailwind gray-50 */
+            --main-bg: #ffffff;
+            --card-bg: #ffffff;
+            --input-bg: #f8fafc; /* Tailwind gray-50 */
+            --ink: #1f2937; /* Tailwind gray-800 */
+            --ink-muted: #6b7280; /* Tailwind gray-500 */
+            --accent: #4f46e5; /* Tailwind indigo-600 */
+            --accent-fg: #ffffff;
+            --line: #e5e7eb; /* Tailwind gray-200 */
+            --win: #16a34a; /* Tailwind green-600 */
+            --lose: #dc2626; /* Tailwind red-600 */
+            --focus: #4f46e5; /* Tailwind indigo-600 */
+
+            /* Round Completion Colors */
+            --completed-r0: rgba(250, 204, 21, 0.2); --completed-r0-border: rgba(202, 138, 4, 0.5); /* Final - Amber */
+            --completed-r1: rgba(192, 192, 192, 0.2); --completed-r1-border: rgba(153, 153, 153, 0.5); /* Semi-Final - Silver */
+            --completed-r2: rgba(205, 127, 50, 0.2); --completed-r2-border: rgba(164, 102, 40, 0.5); /* Quarter-Final - Bronze */
+            --completed-r3: rgba(59, 130, 246, 0.1); --completed-r3-border: rgba(59, 130, 246, 0.5); /* Blue */
+            --completed-r4: rgba(139, 92, 246, 0.1); --completed-r4-border: rgba(139, 92, 246, 0.5); /* Violet */
+        }
+
+        .dark {
+            --bg-light: #030712; /* Tailwind gray-950 */
+            --sidebar-bg: #111827; /* Tailwind gray-900 */
+            --main-bg: #030712; /* Tailwind gray-950 */
+            --card-bg: #111827; /* Tailwind gray-900 */
+            --input-bg: #1f2937; /* Tailwind gray-800 */
+            --ink: #f9fafb; /* Tailwind gray-50 */
+            --ink-muted: #9ca3af; /* Tailwind gray-400 */
+            --accent: #818cf8; /* Tailwind indigo-400 */
+            --accent-fg: #111827;
+            --line: #374151; /* Tailwind gray-700 */
+            --win: #4ade80; /* Tailwind green-400 */
+            --lose: #f87171; /* Tailwind red-400 */
+            --focus: #818cf8; /* Tailwind indigo-400 */
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--ink);
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        /* 스크롤바 디자인 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-track { background: #2d3748; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #4a5568; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #718096; }
+
+        @keyframes popup-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-popup-in { animation: popup-in 0.2s ease-out forwards; }
+
+        /* 풍선 도움말 스타일 */
+        [data-tooltip] { position: relative; }
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%; left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background-color: #1f2937; color: #ffffff;
+            padding: 6px 12px; border-radius: 6px; font-size: 13px;
+            font-weight: 500; white-space: nowrap; opacity: 0;
+            visibility: hidden; transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+            z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            margin-bottom: 5px;
+        }
+        [data-tooltip]:hover::after {
+            opacity: 1; visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* Tournament Specific Styles using variables */
+        .tournament-view { --bg-light: inherit; --sidebar-bg: inherit; --main-bg: inherit; --card-bg: inherit; --input-bg: inherit; --ink: inherit; --ink-muted: inherit; --accent: inherit; --accent-fg: inherit; --line: inherit; --win: inherit; --lose: inherit; --focus: inherit; }
+        .tournament-view *{box-sizing:border-box}
+        .tournament-view .app-container{ display:flex; height: calc(100vh - 4.5rem); }
+        .tournament-view .sidebar{ width: 320px; background: var(--sidebar-bg); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 1.5rem; gap: 1.25rem; }
+        .tournament-view .main-content{ flex: 1; padding: 1.5rem; display:flex; flex-direction:column; overflow: auto; background-color: var(--main-bg); }
+        .tournament-view .sidebar-header h2 { font-size: 20px; margin: 0 0 1rem 0; padding-bottom: 1rem; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+        .tournament-view .sidebar-header svg { width: 24px; height: 24px; color: var(--ink-muted); }
+        .tournament-view .new-tournament-form { display: flex; gap: 8px; }
+        .tournament-view #newTournamentNameInput { flex-grow: 1; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--main-bg); font-size: 14px; color: var(--ink); }
+        .tournament-view #newTournamentNameInput:focus { outline: 2px solid var(--focus); border-color: var(--focus); }
+        .tournament-view #btnAddNew { flex-shrink: 0; padding: 10px 12px; }
+        .tournament-view .sidebar-footer { margin-top: auto; font-size: 12px; color: var(--ink-muted); text-align: center; }
+        .tournament-view .main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-shrink: 0; }
+        .tournament-view .main-header h1 { font-size: 24px; margin: 0; display:flex; align-items:center; gap:12px; }
+        .tournament-view .main-header h1 svg { width: 28px; height: 28px; color: var(--accent); }
+        .tournament-view .placeholder-view { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--ink-muted); }
+        .tournament-view .placeholder-content { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        .tournament-view .placeholder-content svg { width: 64px; height: 64px; }
+        .tournament-view .placeholder-content h3 { font-size: 20px; margin: 0; color: var(--ink); }
+        .tournament-view .placeholder-content p { margin: 0; }
+        .tournament-view .field{margin-bottom:8px}
+        .tournament-view .field label{display:block; font-size:13px; color:var(--ink-muted); margin-bottom:6px}
+        .tournament-view .field input[type="text"], .tournament-view .field textarea, .tournament-view .field select{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card-bg); font-size:14px; color: var(--ink); }
+        .tournament-view .field input[type="text"]:focus, .tournament-view .field textarea:focus { outline: 2px solid var(--focus); border-color: var(--focus); }
+        .tournament-view .btn{ display:inline-flex; align-items:center; justify-content: center; gap:8px; padding:10px 14px; border-radius:8px; border:1px solid var(--line); background: var(--input-bg); color: var(--ink); cursor:pointer; font-weight:600; transition:.2s; }
+        .tournament-view .btn:hover { border-color: var(--ink-muted); }
+        .tournament-view .btn.primary{background:var(--accent); color:var(--accent-fg); border-color:var(--accent)}
+        .tournament-view .btn.primary:hover{ filter: brightness(1.1); }
+        .tournament-view .btn:disabled{opacity:.6; cursor:not-allowed}
+        .tournament-view .hint{font-size:12px; color:var(--ink-muted); margin-top:4px}
+        .tournament-view .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+        .tournament-view .row .chip{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid var(--line); border-radius:20px; cursor:pointer; user-select:none; font-size: 13px;}
+        .tournament-view .row .chip input{margin:0}
+        .tournament-view .row .chip:has(input:checked) { background-color: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+        .tournament-view #tournamentList { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding: 4px; }
+        .tournament-view .tournament-card { padding: 12px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background-color .2s, border-color .2s; }
+        .tournament-view .tournament-card:hover { background: var(--input-bg); }
+        .tournament-view .tournament-card.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+        .tournament-view .tournament-card .name { font-weight: 600; }
+        .tournament-view .tournament-card .details { font-size: 12px; color: var(--ink-muted); }
+        .tournament-view .tournament-card .delete-btn { font-size: 12px; padding: 4px 8px; background: color-mix(in srgb, var(--lose) 10%, transparent); color: var(--lose); border: 1px solid color-mix(in srgb, var(--lose) 40%, transparent); border-radius: 6px; }
+        .tournament-view #settingsPanel { margin-bottom: 16px; flex-shrink: 0; }
+        .tournament-view #settingsPanel h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 12px 0; font-size: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+        .tournament-view #settingsPanel h3 svg { width: 20px; height: 20px; color: var(--ink-muted); }
+        .tournament-view .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 16px; align-items: start; }
+        .tournament-view .settings-grid .field.full-width { grid-column: 1 / -1; }
+        .tournament-view .settings-grid .field-group { grid-column: 1 / -1; display: flex; align-items: flex-end; gap: 16px; }
+        .tournament-view .settings-grid .team-list-field { width: 50%; margin-bottom: 0; }
+        .tournament-view .settings-grid .action-buttons { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+        .tournament-view .bracket-wrap{ position:relative; border:1px solid var(--line); border-radius:10px; padding:16px; background-color: var(--sidebar-bg); flex-shrink: 0; }
+        .tournament-view .svg-layer{position:absolute; inset:0; pointer-events:none}
+        .tournament-view .rounds { display: flex; align-items: flex-start; gap: 60px; }
+        .tournament-view .round { display: flex; flex-direction: column; justify-content: space-around; flex-grow: 1; min-width: 240px; }
+        .tournament-view .round-title { font-weight: 700; font-size: 14px; color: var(--ink-muted); text-align: center; margin-bottom: 16px; }
+        .tournament-view .match-group { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; gap: 16px; }
+        .tournament-view .match{ background: var(--bg-light); border:1px solid var(--line); border-left:4px solid transparent; border-radius:10px; padding:8px; position:relative; box-shadow:0 1px 2px rgba(0,0,0,.04); transition: border .2s, background-color .2s, box-shadow .2s; }
+        .tournament-view .match.completed.completed-r0 { background-color: var(--completed-r0); border-left-color: var(--completed-r0-border); }
+        .tournament-view .match.completed.completed-r1 { background-color: var(--completed-r1); border-left-color: var(--completed-r1-border); }
+        .tournament-view .match.completed.completed-r2 { background-color: var(--completed-r2); border-left-color: var(--completed-r2-border); }
+        .tournament-view .match.completed.completed-r3 { background-color: var(--completed-r3); border-left-color: var(--completed-r3-border); }
+        .tournament-view .match.completed.completed-r4 { background-color: var(--completed-r4); border-left-color: var(--completed-r4-border); }
+        .tournament-view .match.next-match { border-color: var(--accent); box-shadow: 0 0 0 0 rgba(0,0,0,0); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); } 70% { box-shadow: 0 0 0 8px rgba(0,0,0,0); } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
+        .tournament-view .teams{display:grid; grid-template-columns: 1fr auto; gap:6px; align-items:center}
+        .tournament-view .team{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; transition:.15s; }
+        .tournament-view .team.win{ font-weight: 600;}
+        .dark .tournament-view .team.win { background:color-mix(in srgb, var(--win) 20%, transparent); }
+        html:not(.dark) .tournament-view .team.win { background:color-mix(in srgb, var(--win) 15%, transparent); }
+        .tournament-view .team.lose{opacity: .6;}
+        .tournament-view .rank-badge { font-weight: 600; font-size: 13px; margin-right: 5px; padding: 3px 6px; border-radius: 5px; display: inline-block; line-height: 1; vertical-align: middle; border: 1px solid transparent; }
+        .tournament-view .rank-badge.gold { background: linear-gradient(145deg, #ffd700, #f0c400); color: #4a3f00; border-color: #e0b400; text-shadow: 0 1px 0 rgba(255,255,255,0.3); }
+        .tournament-view .rank-badge.silver { background: linear-gradient(145deg, #e0e0e0, #b0b0b0); color: #383838; border-color: #a0a0a0; text-shadow: 0 1px 0 rgba(255,255,255,0.5); }
+        .tournament-view .rank-badge.bronze { background: linear-gradient(145deg, #cd7f32, #b86e29); color: #ffffff; border-color: #a06020; text-shadow: 0 1px 1px rgba(0,0,0,0.3); }
+        .tournament-view .win-badge { color: var(--win); font-weight: bold; font-size: 12px; margin-left: auto; padding-left: 8px; }
+        .tournament-view .bye-badge { color: var(--ink-muted); font-weight: bold; font-size: 12px; margin-left: auto; padding-left: 8px; }
+        .tournament-view .score{ width:52px; text-align:center; padding:6px 8px; border:1px solid var(--line); border-radius:8px; font-weight:700; background: var(--input-bg); color: var(--ink); }
+        .tournament-view .bye{color:var(--ink-muted); font-size:12px; padding-left:4px}
+        .tournament-view .sr-only{position:absolute; left:-10000px}
+
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-800 dark:text-gray-50 antialiased">
+
+    <header class="sticky top-0 z-40 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700/50">
+        <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between">
+                <div class="flex items-center gap-4">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-indigo-500">
+                        <path d="M12.75 3.375a.75.75 0 00-1.5 0V4.5h-1.5a.75.75 0 000 1.5h1.5v1.5a.75.75 0 001.5 0V6h1.5a.75.75 0 000-1.5h-1.5V3.375z"></path>
+                        <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3V12.75a3 3 0 00-3-3v-3A5.25 5.25 0 0012 1.5zm-3.75 5.25a3.75 3.75 0 013.75-3.75h.008a3.75 3.75 0 013.75 3.75v3a.75.75 0 01-.75.75h-7.5a.75.75 0 01-.75-.75v-3z" clip-rule="evenodd"></path>
+                    </svg>
+                    <h1 class="text-xl font-bold text-gray-900 dark:text-gray-50 flex items-baseline gap-2">
+                        체육 수업 도우미
+                        <span class="text-xs font-medium text-indigo-500">V1.0</span>
+                    </h1>
+                </div>
+
+                <div class="flex items-center gap-2">
+                     <div class="hidden sm:flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                        <button id="nav-league" class="px-3 py-1 text-sm font-semibold rounded-md transition-colors duration-200">리그전 관리</button>
+                        <button id="nav-tournament" class="px-3 py-1 text-sm font-semibold rounded-md transition-colors duration-200">토너먼트 관리</button>
+                     </div>
+                     <button id="darkModeToggle" data-tooltip="다크/라이트 모드 전환" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"></button>
+                </div>
+            </div>
+            <div class="sm:hidden border-t border-gray-200 dark:border-gray-700/50 flex items-center justify-center bg-gray-100 dark:bg-gray-800/50 p-1">
+                <button id="nav-league-mobile" class="flex-1 text-center px-3 py-2 text-sm font-semibold rounded-md transition-colors duration-200">리그전</button>
+                <button id="nav-tournament-mobile" class="flex-1 text-center px-3 py-2 text-sm font-semibold rounded-md transition-colors duration-200">토너먼트</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- League View -->
+        <div id="league-view">
+            <div class="flex flex-col md:flex-row">
+                <!-- 좌측 사이드바 -->
+                <aside class="w-full md:w-80 flex-shrink-0 md:h-[calc(100vh-6.5rem)] sm:md:h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-800 p-6 border-r dark:border-gray-700 shadow-lg md:sticky top-16 flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <h1 class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">반 목록</h1>
+                    </div>
+
+                    <div class="flex-grow">
+                        <div class="mb-4">
+                            <input type="text" id="className" placeholder="새로운 반 이름" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+                        </div>
+                        <button onclick="league_createClass()" data-tooltip="새로운 반을 목록에 추가합니다." class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
+                            반 추가
+                        </button>
+                        <div id="classList" class="mt-6 space-y-2"></div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t dark:border-gray-700">
+                        <button class="w-full mb-2 bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition flex items-center justify-center gap-2" onclick="league_exportToExcel()" data-tooltip="현재 반의 순위표와 경기 일정을 엑셀 파일로 내보냅니다.">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.527-1.453L5.85 7.74a4.995 4.995 0 00-1.338 1.196l-.179.187a.34.34 0 00-.118.262.34.34 0 00.118.262l.179.187a4.995 4.995 0 001.338 1.196l-.01.01.01.01a6.012 6.012 0 01-1.527-1.453zM10 12.25a4.25 4.25 0 100-8.5 4.25 4.25 0 000 8.5zM15.668 8.027a6.012 6.012 0 01-1.527-1.453L14.15 7.74a4.995 4.995 0 001.338 1.196l.179.187a.34.34 0 00.118.262.34.34 0 00-.118.262l-.179.187a4.995 4.995 0 00-1.338 1.196l.01.01-.01.01a6.012 6.012 0 011.527-1.453z" />
+                            </svg>
+                            엑셀로 내보내기
+                        </button>
+                        <button class="w-full mb-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2" onclick="league_exportData()" data-tooltip="현재 모든 데이터를 JSON 파일로 내보냅니다.">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                            데이터 백업
+                        </button>
+                        <label for="importFile" class="w-full block text-center bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition cursor-pointer flex items-center justify-center gap-2" data-tooltip="JSON 파일에서 데이터를 불러옵니다. 현재 데이터는 사라집니다.">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M4 12a1 1 0 011 1v2a1 1 0 001 1h8a1 1 0 001-1v-2a1 1 0 112 0v2a3 3 0 01-3 3H6a3 3 0 01-3-3v-2a1 1 0 011-1z" />
+                            <path d="M10 2a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 2z" />
+                            </svg>
+                            데이터 복원
+                        </label>
+                        <input type="file" id="importFile" accept=".json" class="hidden" onchange="league_importData(event)" />
+                    </div>
+                </aside>
+
+                <!-- 오른쪽 메인 화면 -->
+                <div class="w-full p-4 md:p-8">
+                    <div class="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-xl min-h-full">
+                        <h1 id="mainTitle" class="text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100">리그전 관리</h1>
+                        <div id="noClassSelected" class="text-center py-20">
+                            <svg class="mx-auto h-24 w-24 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            <h2 class="mt-6 text-xl font-medium text-gray-900 dark:text-gray-200">반을 선택하여 시작하세요</h2>
+                            <p class="mt-1 text-gray-500 dark:text-gray-400">왼쪽에서 반을 선택하거나 새로 만들어주세요.</p>
+                        </div>
+                        <div id="classDashboard" class="hidden space-y-8">
+                            <section>
+                                <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">학생 관리</h2>
+                                <div class="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-lg">
+                                    <div class="flex flex-wrap gap-4 mb-4">
+                                        <input id="studentName" class="flex-grow px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600" placeholder="학생 이름 입력" onkeypress="league_handleEnter(event, league_addStudent)" />
+                                        <button class="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition" onclick="league_addStudent()" data-tooltip="입력한 학생을 목록에 추가합니다.">추가</button>
+                                        <button class="bg-gray-600 text-white px-5 py-2 rounded-lg hover:bg-gray-700 transition" onclick="league_bulkAddStudents()" data-tooltip="쉼표로 구분된 여러 학생을 한 번에 추가합니다.">일괄 추가</button>
+                                    </div>
+                                    <div id="studentList" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"></div>
+                                </div>
+                            </section>
+                            <section>
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">경기 일정</h2>
+                                    <div class="flex gap-2">
+                                        <button class="bg-yellow-500 text-white p-2 rounded-lg hover:bg-yellow-600 transition" onclick="league_clearAllHighlights()" data-tooltip="모든 경기 강조 표시를 한 번에 해제합니다.">
+                                            <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.311V21m-3.75 0h.008v.008h-.008V21m0 0h.008v.008h-.008V21m0 0h.008v.008h-.008V21m-7.5-1.424v1.424h15V19.576m-15 0a12.06 12.06 0 014.5 0m-4.5 0a12.06 12.06 0 004.5 0m7.5-1.424v1.424h-15V19.576m15 0a12.06 12.06 0 00-4.5 0m4.5 0a12.06 12.06 0 01-4.5 0m0 0v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75-3.612a24.282 24.282 0 01-7.5 0m7.5 0a24.282 24.282 0 00-7.5 0m7.5 0v-.375c0-.621-.504-1.125-1.125-1.125H11.25c-.621 0-1.125.504-1.125 1.125v.375m1.5-4.875c.621 0 1.125.504 1.125 1.125v.375m-1.5-.5c-.621 0-1.125.504-1.125 1.125v.375M3 3l18 18" /></svg>
+                                        </button>
+                                        <button class="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition" onclick="league_generateGames()" data-tooltip="현재 학생 목록으로 새 경기 일정을 생성합니다. 기존 일정은 삭제됩니다.">일정 생성</button>
+                                    </div>
+                                </div>
+                                <div id="gameStats" class="mb-4"></div>
+                                <div class="overflow-x-auto rounded-lg border dark:border-gray-700">
+                                    <table class="w-full min-w-[800px]">
+                                        <thead class="bg-gray-100 dark:bg-gray-800">
+                                            <tr>
+                                                <th class="p-3 text-sm font-semibold text-left">번호</th><th class="p-3 text-sm font-semibold text-left">선수 1</th><th class="p-3 text-sm font-semibold text-center">점수</th><th class="p-3 text-sm font-semibold text-center">vs</th><th class="p-3 text-sm font-semibold text-center">점수</th><th class="p-3 text-sm font-semibold text-left">선수 2</th><th class="p-3 text-sm font-semibold text-left">상태</th><th class="p-3 text-sm font-semibold text-left">입력 일시</th><th class="p-3 text-sm font-semibold text-left">비고</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gamesTableBody" class="divide-y dark:divide-gray-700"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+                            <section>
+                                <div class="flex justify-between items-center mb-4">
+                                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">순위표</h2>
+                                    <button onclick="league_printRankings()" class="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition text-sm" data-tooltip="현재 순위표를 인쇄합니다.">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v6a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm2-1a1 1 0 00-1 1v3h8V4a1 1 0 00-1-1H7zM5 9h10v6H5V9zm2 2a1 1 0 00-1 1v2a1 1 0 102 0v-2a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                        순위표 인쇄
+                                    </button>
+                                </div>
+                                <div class="overflow-x-auto rounded-lg border dark:border-gray-700">
+                                    <table id="rankingsTable" class="w-full min-w-[700px]">
+                                        <thead class="bg-gray-100 dark:bg-gray-800">
+                                            <tr>
+                                                <th class="p-3 text-sm font-semibold text-left">순위</th><th class="p-3 text-sm font-semibold text-left">이름</th><th class="p-3 text-sm font-semibold text-center">경기수</th><th class="p-3 text-sm font-semibold text-center">승</th><th class="p-3 text-sm font-semibold text-center">패</th><th class="p-3 text-sm font-semibold text-center">무</th><th class="p-3 text-sm font-semibold text-center">승점</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="rankingsBody" class="divide-y dark:divide-gray-700"></tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="league_openRankingPopup()" data-tooltip="실시간 순위표 팝업을 엽니다." class="fixed bottom-8 right-8 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-lg hover:bg-indigo-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 z-30">
+                실시간 순위표
+            </button>
+        </div>
+
+        <!-- Tournament View -->
+        <div id="tournament-view" class="tournament-view hidden">
+             <div class="app-container">
+                <aside class="sidebar">
+                    <header class="sidebar-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                        <h2 id="tournaments-title">토너먼트 목록</h2>
+                    </header>
+                    <div class="new-tournament-form">
+                        <input id="newTournamentNameInput" type="text" placeholder="새로운 토너먼트 이름">
+                        <button id="btnAddNew" class="btn primary" aria-label="새로운 토너먼트 추가"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                    </div>
+                    <div id="tournamentList" role="listbox"></div>
+                </aside>
+                <main class="main-content">
+                    <div id="placeholder-view" class="placeholder-view">
+                        <div class="placeholder-content">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <h3>생성된 토너먼트를 선택하여 시작하세요</h3>
+                            <p>왼쪽에서 토너먼트를 선택하거나 새로 만들어주세요.</p>
+                        </div>
+                    </div>
+                    <section id="settingsPanel" style="display:none;">
+                        <h3><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="14 2 18 6 7 17 3 17 3 13 14 2"></polygon><line x1="3" y1="22" x2="21" y2="22"></line></svg>토너먼트 설정</h3>
+                        <div class="settings-grid">
+                            <div class="field"><label for="tournamentName">토너먼트 이름*</label><input id="tournamentName" type="text" placeholder="예) 2학년 3반 족구 대회" /></div>
+                            <div class="field"><label for="sportName">경기 종목*</label><input id="sportName" type="text" placeholder="예) 족구, 피구" /></div>
+                            <div class="field">
+                                <label>토너먼트 형식*</label>
+                                <div class="row" role="radiogroup" aria-label="토너먼트 형식"><label class="chip"><input type="radio" name="format" value="single" checked> 단판</label><label class="chip"><input type="radio" name="format" value="roundrobin" disabled> 리그(준비중)</label></div>
+                            </div>
+                            <div class="field">
+                                <label>시드 배정</label>
+                                <div class="row" role="radiogroup" aria-label="시드 배정"><label class="chip"><input type="radio" name="seeding" value="input" checked> 입력 순</label><label class="chip"><input type="radio" name="seeding" value="random"> 무작위</label></div>
+                            </div>
+                            <div class="field-group full-width">
+                                <div class="field team-list-field">
+                                    <label for="teamsInput">참가 팀 명단 (한 줄에 한 팀)*</label>
+                                    <textarea id="teamsInput" rows="4" placeholder="청팀&#10;백팀&#10;1조 드림팀&#10;2조 어벤져스"></textarea>
+                                    <div class="hint">빈 줄/중복은 자동 제거됩니다.</div>
+                                </div>
+                                <div class="action-buttons"><button id="btnBuild" class="btn primary">대진표 생성/업데이트</button><button id="btnReset" class="btn">입력 초기화</button></div>
+                            </div>
+                        </div>
+                    </section>
+                    <section id="bracket-container" class="bracket-wrap" style="display: none;">
+                        <h2 id="bracket-title" class="sr-only">대진표</h2>
+                        <div id="roundsContainer"><div id="rounds" class="rounds" role="list"></div></div>
+                        <svg id="svgLayer" class="svg-layer" xmlns="http://www.w3.org/2000/svg"></svg>
+                    </section>
+                    <div id="statusText" aria-live="polite" style="margin-top: auto; color: var(--ink-muted); font-size: 12px; flex-shrink: 0;"></div>
+                </main>
+            </div>
+        </div>
+
+    </main>
+    
+    <footer class="text-center text-xs text-gray-500 dark:text-gray-400 py-4 border-t dark:border-gray-800">
+        만든이: 김신회(laguyo87@gmail.com)
+    </footer>
+
+    <!-- Universal Modal -->
+    <div id="modal-container" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 hidden animate-popup-in">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 id="modal-title" class="text-lg font-bold mb-4"></h3>
+            <div id="modal-body" class="text-gray-700 dark:text-gray-300 mb-6"></div>
+            <div id="modal-actions" class="flex justify-end gap-3"></div>
+        </div>
+    </div>
+
+
+    <!-- League Ranking Popup -->
+    <div id="rankingPopup" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4 animate-popup-in">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b dark:border-gray-700">
+                <h2 id="popupTitle" class="text-2xl font-bold">실시간 순위표</h2>
+                <button onclick="league_closeRankingPopup()" data-tooltip="팝업 닫기" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                </button>
+            </div>
+            <div class="overflow-y-auto p-6">
+                <table class="w-full min-w-[700px]">
+                    <thead class="bg-gray-100 dark:bg-gray-800 sticky top-0">
+                         <tr>
+                            <th class="p-3 text-sm font-semibold text-left">순위</th><th class="p-3 text-sm font-semibold text-left">이름</th><th class="p-3 text-sm font-semibold text-center">경기수</th><th class="p-3 text-sm font-semibold text-center">승</th><th class="p-3 text-sm font-semibold text-center">패</th><th class="p-3 text-sm font-semibold text-center">무</th><th class="p-3 text-sm font-semibold text-center">승점</th>
+                        </tr>
+                    </thead>
+                    <tbody id="popupRankingsBody" class="divide-y dark:divide-gray-700"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+    // --- App Shell Logic ---
+    const navLeagueBtn = document.getElementById('nav-league');
+    const navTournamentBtn = document.getElementById('nav-tournament');
+    const navLeagueBtnMobile = document.getElementById('nav-league-mobile');
+    const navTournamentBtnMobile = document.getElementById('nav-tournament-mobile');
+    const leagueView = document.getElementById('league-view');
+    const tournamentView = document.getElementById('tournament-view');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+
+    function showView(viewName) {
+        if (viewName === 'league') {
+            leagueView.classList.remove('hidden');
+            tournamentView.classList.add('hidden');
+            navLeagueBtn.classList.add('bg-white', 'text-indigo-600', 'dark:bg-gray-950', 'dark:text-white');
+            navTournamentBtn.classList.remove('bg-white', 'text-indigo-600', 'dark:bg-gray-950', 'dark:text-white');
+            navLeagueBtnMobile.classList.add('bg-white', 'text-indigo-600', 'dark:bg-gray-950', 'dark:text-white');
+            navTournamentBtnMobile.classList.remove('bg-white', 'text-indigo-600', 'dark:bg-gray-950', 'dark:text-white');
+        } else {
+            leagueView.classList.add('hidden');
+            tournamentView.classList.remove('hidden');
+            navTournamentBtn.classList.add('bg-white', 'text-indigo-600', 'dark:bg-gray-950', 'dark:text-white');
+            navLeagueBtn.classList.remove('bg-white', 'text-indigo-600', 'dark:bg-gray-950', 'dark:text-white');
+            navTournamentBtnMobile.classList.add('bg-white', 'text-indigo-600', 'dark:bg-gray-950', 'dark:text-white');
+            navLeagueBtnMobile.classList.remove('bg-white', 'text-indigo-600', 'dark:bg-gray-950', 'dark:text-white');
+            // Redraw SVG lines on view switch
+            requestAnimationFrame(tournament_drawSvgLines);
+        }
+    }
+    
+    function setupShell() {
+        navLeagueBtn.addEventListener('click', () => showView('league'));
+        navTournamentBtn.addEventListener('click', () => showView('tournament'));
+        navLeagueBtnMobile.addEventListener('click', () => showView('league'));
+        navTournamentBtnMobile.addEventListener('click', () => showView('tournament'));
+
+        darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            updateThemeUI();
+        });
+        
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        }
+        updateThemeUI();
+        showView('league'); // Default view
+    }
+    
+    function updateThemeUI() {
+        const isDark = document.documentElement.classList.contains('dark');
+        darkModeToggle.innerHTML = isDark 
+            ? `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>`
+            : `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>`;
+    }
+
+
+    // --- Universal Modal Logic ---
+    const modalContainer = document.getElementById('modal-container');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalActions = document.getElementById('modal-actions');
+    function closeModal() {
+        modalContainer.classList.add('hidden');
+    }
+    function showModal({ title, body, actions }) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = body;
+        modalActions.innerHTML = '';
+        actions.forEach(action => {
+            const button = document.createElement('button');
+            button.textContent = action.text;
+            button.className = `px-4 py-2 rounded-lg font-semibold transition ${action.className}`;
+            button.onclick = action.callback;
+            modalActions.appendChild(button);
+        });
+        modalContainer.classList.remove('hidden');
+        const input = modalContainer.querySelector('input, textarea');
+        if (input) input.focus();
+    }
+
+
+    // --- League Program Logic ---
+    (function() {
+        let classes = [], students = [], games = [];
+        let selectedClass = null;
+        
+        // --- DOM Elements ---
+        const classListEl = document.getElementById('classList');
+        const noClassSelectedEl = document.getElementById('noClassSelected');
+        const classDashboardEl = document.getElementById('classDashboard');
+        const studentNameInput = document.getElementById('studentName');
+        const studentListEl = document.getElementById('studentList');
+        const gamesTableBodyEl = document.getElementById('gamesTableBody');
+        const rankingsBodyEl = document.getElementById('rankingsBody');
+        const mainTitleEl = document.getElementById('mainTitle');
+        const rankingPopupEl = document.getElementById('rankingPopup');
+        const gameStatsEl = document.getElementById('gameStats');
+        
+        // Assign global functions to the window object so inline HTML onclicks can find them
+        window.league_loadData = function() {
+            classes = JSON.parse(localStorage.getItem('league_classes') || '[]');
+            students = JSON.parse(localStorage.getItem('league_students') || '[]');
+            games = JSON.parse(localStorage.getItem('league_games') || '[]');
+            renderClasses();
+        };
+
+        function saveData() {
+            localStorage.setItem('league_classes', JSON.stringify(classes));
+            localStorage.setItem('league_students', JSON.stringify(students));
+            localStorage.setItem('league_games', JSON.stringify(games));
+        }
+
+        // --- Rendering ---
+        function renderAll() {
+            renderClasses();
+            renderStudents();
+            renderGames();
+            renderGameStats();
+            updateRankings();
+        }
+        
+        function renderClasses() {
+            classListEl.innerHTML = classes.map(c => {
+                const hasNote = c.note && c.note.trim() !== '';
+                const noteIconColor = hasNote ? 'text-yellow-500 hover:text-yellow-600' : 'text-gray-400 hover:text-gray-500';
+                return `
+                <div class="flex justify-between items-center gap-2 p-3 rounded-lg cursor-pointer transition ${selectedClass?.id == c.id ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}" onclick="league_selectClass('${c.id}')">
+                    <span class="font-medium break-all ${selectedClass?.id == c.id ? 'text-indigo-700 dark:text-indigo-300' : ''}">${c.name}</span>
+                    <div class="flex-shrink-0">
+                        <button class="p-1 ${noteIconColor}" data-tooltip="반 메모" onclick="event.stopPropagation(); league_editClassNote('${c.id}')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></button>
+                        <button class="p-1 text-gray-500 hover:text-blue-500 dark:hover:text-blue-400" data-tooltip="반 이름을 변경합니다." onclick="event.stopPropagation(); league_editClass('${c.id}')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                        <button class="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400" data-tooltip="반과 관련된 모든 데이터를 삭제합니다." onclick="event.stopPropagation(); league_deleteClass('${c.id}')"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function renderStudents() {
+            if (!selectedClass) return;
+            const classStudents = students.filter(s => s.classId == selectedClass.id);
+            studentListEl.innerHTML = classStudents.map(st => `
+                <div class="flex justify-between items-center p-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
+                    <span class="text-sm font-medium">${st.name}</span>
+                    <div class="flex items-center">
+                         <button class="p-1 ${st.note?.trim() ? 'text-yellow-500' : 'text-gray-400'} hover:text-yellow-500" data-tooltip="학생 메모" onclick="league_editStudentNote('${st.id}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></button>
+                        <button class="p-1 text-gray-400 hover:text-blue-500" data-tooltip="학생 이름을 변경합니다." onclick="league_editStudent('${st.id}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                        <button class="p-1 text-gray-400 hover:text-red-500" data-tooltip="학생과 관련된 모든 경기 기록을 삭제합니다." onclick="league_removeStudent('${st.id}')"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderGames() {
+            if (!selectedClass) return;
+            gamesTableBodyEl.innerHTML = games.filter(g => g.classId == selectedClass.id).map((game, index) => {
+                const p1 = students.find(s => s.id == game.player1Id);
+                const p2 = students.find(s => s.id == game.player2Id);
+                if (!p1 || !p2) return '';
+                let rowClass = `transition-colors duration-200 ${game.isHighlighted ? 'bg-blue-100 dark:bg-blue-900/50' : (index % 2 !== 0 ? 'bg-gray-50 dark:bg-gray-800/50' : '')} hover:bg-gray-100 dark:hover:bg-gray-700/50`;
+                const highlightNumberClass = game.isHighlighted ? 'text-red-600 dark:text-red-400 font-bold text-lg' : 'font-medium text-gray-900 dark:text-gray-200';
+                return `
+                    <tr class="${rowClass}" data-game-id="${game.id}">
+                        <td class="p-3 cursor-pointer" onclick="league_toggleHighlightGame('${game.id}')"><span class="${highlightNumberClass} transition-all duration-200" data-tooltip="경기 강조/해제">${index + 1}</span></td>
+                        <td class="p-3 font-medium">${p1.name}</td>
+                        <td class="p-3 text-center"><input type="number" class="w-16 text-center bg-gray-50 dark:bg-gray-700 border rounded-md p-1" value="${game.player1Score ?? ''}" onchange="league_updateScore('${game.id}', 'player1', this.value)"></td>
+                        <td class="p-3 text-center">vs</td>
+                        <td class="p-3 text-center"><input type="number" class="w-16 text-center bg-gray-50 dark:bg-gray-700 border rounded-md p-1" value="${game.player2Score ?? ''}" onchange="league_updateScore('${game.id}', 'player2', this.value)"></td>
+                        <td class="p-3 font-medium">${p2.name}</td>
+                        <td class="p-3"><span class="px-2 py-1 text-xs font-semibold rounded-full ${game.isCompleted ? 'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-100' : 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100'}">${game.isCompleted ? '완료' : '대기'}</span></td>
+                        <td class="p-3 text-sm text-gray-500 dark:text-gray-400">${game.completionDate || ''}</td>
+                        <td class="p-3"><input type="text" class="w-full bg-gray-50 dark:bg-gray-700 border rounded-md p-1 text-sm" placeholder="메모..." value="${game.note || ''}" onchange="league_updateNote('${game.id}', this.value)"></td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function renderGameStats() {
+            if (!selectedClass) { gameStatsEl.innerHTML = ''; return; }
+            const classGames = games.filter(g => g.classId == selectedClass.id);
+            const totalGames = classGames.length, completedGames = classGames.filter(g => g.isCompleted).length;
+            gameStatsEl.innerHTML = `
+                <div class="flex justify-start gap-x-6 gap-y-2 flex-wrap bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg">
+                    <div class="flex items-center gap-2"><span class="font-semibold text-sm">총경기수:</span><span class="px-2.5 py-1 text-sm font-bold text-blue-800 bg-blue-100 rounded-full dark:bg-blue-900 dark:text-blue-200">${totalGames}</span></div>
+                    <div class="flex items-center gap-2"><span class="font-semibold text-sm">완료:</span><span class="px-2.5 py-1 text-sm font-bold text-green-800 bg-green-100 rounded-full dark:bg-green-900 dark:text-green-200">${completedGames}</span></div>
+                    <div class="flex items-center gap-2"><span class="font-semibold text-sm">잔여:</span><span class="px-2.5 py-1 text-sm font-bold text-yellow-800 bg-yellow-100 rounded-full dark:bg-yellow-900 dark:text-yellow-200">${totalGames - completedGames}</span></div>
+                </div>`;
+        }
+        
+        function updateRankings(targetBody = rankingsBodyEl) {
+            if (!selectedClass) return;
+            const classStudents = students.filter(s => s.classId == selectedClass.id);
+            const classGames = games.filter(g => g.classId == selectedClass.id && g.isCompleted);
+            const ranks = classStudents.map(st => {
+                let wins = 0, losses = 0, draws = 0, gamesPlayed = 0, points = 0;
+                classGames.forEach(g => {
+                    if (g.player1Id == st.id) { gamesPlayed++; if (g.player1Score > g.player2Score) { wins++; points += 3; } else if (g.player1Score < g.player2Score) { losses++; } else { draws++; points += 1; } } 
+                    else if (g.player2Id == st.id) { gamesPlayed++; if (g.player2Score > g.player1Score) { wins++; points += 3; } else if (g.player2Score < g.player1Score) { losses++; } else { draws++; points += 1; } }
+                });
+                return { name: st.name, gamesPlayed, wins, losses, draws, points };
+            }).sort((a, b) => b.points - a.points || b.wins - a.wins);
+            
+            let lastPoints = -1, lastWins = -1, currentRank = 0;
+            targetBody.innerHTML = ranks.map((p, i) => {
+                if (p.points !== lastPoints || p.wins !== lastWins) { currentRank = i + 1; }
+                lastPoints = p.points; lastWins = p.wins;
+                return `
+                <tr class="transition-colors duration-200 ${i % 2 !== 0 ? 'bg-gray-50 dark:bg-gray-800/50' : ''} hover:bg-gray-100 dark:hover:bg-gray-700/50">
+                    <td class="p-3 font-bold">${currentRank}</td><td class="p-3">${p.name}</td><td class="p-3 text-center">${p.gamesPlayed}</td><td class="p-3 text-center text-green-600 font-semibold">${p.wins}</td>
+                    <td class="p-3 text-center text-red-600">${p.losses}</td><td class="p-3 text-center">${p.draws}</td><td class="p-3 text-center font-bold text-indigo-600 dark:text-indigo-400">${p.points}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // --- Core Logic ---
+        function generateUUID() { return 'id-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 9); }
+        
+        window.league_createClass = function() {
+            const name = document.getElementById('className').value.trim();
+            if (name && !classes.some(c => c.name === name)) {
+                const newClass = { id: generateUUID(), name, note: '' };
+                classes.push(newClass);
+                saveData();
+                document.getElementById('className').value = '';
+                renderClasses();
+                league_selectClass(newClass.id);
+            }
+        };
+        
+        window.league_editClass = function(id) {
+            const c = classes.find(x => x.id == id);
+            showModal({
+                title: '반 이름 변경', body: `<input id="modal-input" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" value="${c.name}">`,
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500', callback: closeModal },
+                    { text: '변경', className: 'bg-indigo-600 text-white hover:bg-indigo-700', callback: () => {
+                        const newName = document.getElementById('modal-input').value.trim();
+                        if (newName) { c.name = newName; saveData(); renderClasses(); if (selectedClass?.id == id) mainTitleEl.textContent = `${c.name} 리그전`; }
+                        closeModal();
+                    }}
+                ]
+            });
+        };
+        
+        window.league_editClassNote = function(id) {
+            const classItem = classes.find(c => c.id == id);
+            showModal({
+                title: `${classItem.name} 반 메모`, body: `<textarea id="modal-textarea" class="w-full mt-2 p-2 border rounded-md h-32 dark:bg-gray-700 dark:border-gray-600" placeholder="메모를 입력하세요...">${classItem.note || ''}</textarea>`,
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500', callback: closeModal },
+                    { text: '저장', className: 'bg-indigo-600 text-white hover:bg-indigo-700', callback: () => {
+                        classItem.note = document.getElementById('modal-textarea').value.trim();
+                        saveData(); renderClasses(); closeModal();
+                    }}
+                ]
+            });
+        };
+
+        window.league_deleteClass = function(id) {
+            showModal({
+                title: '반 삭제', body: '정말 이 반을 삭제하시겠습니까? 모든 학생과 경기 기록이 함께 삭제됩니다.',
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500', callback: closeModal },
+                    { text: '삭제', className: 'bg-red-600 text-white hover:bg-red-700', callback: () => {
+                        classes = classes.filter(c => c.id != id); students = students.filter(s => s.classId != id); games = games.filter(g => g.classId != id);
+                        if (selectedClass?.id == id) { selectedClass = null; classDashboardEl.classList.add('hidden'); noClassSelectedEl.classList.remove('hidden'); mainTitleEl.textContent = '리그전 관리'; }
+                        saveData(); renderClasses(); closeModal();
+                    }}
+                ]
+            });
+        };
+        
+        window.league_selectClass = function(id) {
+            selectedClass = classes.find(c => c.id == id);
+            mainTitleEl.textContent = `${selectedClass.name} 리그전`;
+            noClassSelectedEl.classList.add('hidden');
+            classDashboardEl.classList.remove('hidden');
+            renderAll();
+        };
+        
+        window.league_addStudent = function() {
+            if (!selectedClass) return;
+            const name = studentNameInput.value.trim();
+            if (name && !students.some(s => s.name === name && s.classId == selectedClass.id)) {
+                students.push({ id: generateUUID(), name, classId: selectedClass.id, note: '' });
+                studentNameInput.value = '';
+                saveData(); renderStudents();
+            }
+        };
+        
+        window.league_bulkAddStudents = function() {
+            if (!selectedClass) return;
+            showModal({
+                title: '일괄 추가', body: `<p>학생 이름을 쉼표(,)로 구분하여 입력하세요.</p><textarea id="modal-textarea" class="w-full mt-2 p-2 border rounded-md h-24 dark:bg-gray-700 dark:border-gray-600"></textarea>`,
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500', callback: closeModal },
+                    { text: '추가', className: 'bg-indigo-600 text-white hover:bg-indigo-700', callback: () => {
+                        const namesStr = document.getElementById('modal-textarea').value;
+                        if (namesStr) {
+                            namesStr.split(',').map(n => n.trim()).filter(Boolean).forEach(name => {
+                                if (!students.some(s => s.name === name && s.classId == selectedClass.id)) { students.push({ id: generateUUID(), name, classId: selectedClass.id, note: '' }); }
+                            });
+                            saveData(); renderStudents();
+                        }
+                        closeModal();
+                    }}
+                ]
+            });
+        };
+
+        window.league_editStudent = function(id) {
+            const student = students.find(s => s.id == id);
+            if (!student) return;
+            showModal({
+                title: '학생 이름 변경', body: `<input id="modal-input" class="w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600" value="${student.name}">`,
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500', callback: closeModal },
+                    { text: '변경', className: 'bg-indigo-600 text-white hover:bg-indigo-700', callback: () => {
+                        const newName = document.getElementById('modal-input').value.trim();
+                        if (newName && !students.some(s => s.classId == selectedClass.id && s.name === newName && s.id != id)) { student.name = newName; saveData(); renderAll(); }
+                        closeModal();
+                    }}
+                ]
+            });
+        };
+
+        window.league_editStudentNote = function(id) {
+            const student = students.find(s => s.id == id);
+            showModal({
+                title: `${student.name} 학생 메모`, body: `<textarea id="modal-textarea" class="w-full mt-2 p-2 border rounded-md h-32 dark:bg-gray-700 dark:border-gray-600" placeholder="메모를 입력하세요...">${student.note || ''}</textarea>`,
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500', callback: closeModal },
+                    { text: '저장', className: 'bg-indigo-600 text-white hover:bg-indigo-700', callback: () => {
+                        student.note = document.getElementById('modal-textarea').value.trim();
+                        saveData(); renderStudents(); closeModal();
+                    }}
+                ]
+            });
+        };
+
+        window.league_removeStudent = function(id) {
+            showModal({
+                title: '학생 삭제', body: '정말 이 학생을 삭제하시겠습니까? 관련된 모든 경기 기록도 삭제됩니다.',
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500', callback: closeModal },
+                    { text: '삭제', className: 'bg-red-600 text-white hover:bg-red-700', callback: () => {
+                        students = students.filter(s => s.id != id);
+                        games = games.filter(g => g.player1Id != id && g.player2Id != id);
+                        saveData(); renderAll(); closeModal();
+                    }}
+                ]
+            });
+        };
+        
+        window.league_generateGames = function() {
+            if (!selectedClass || students.filter(s => s.classId == selectedClass.id).length < 2) { showModal({title: '알림', body: '경기를 생성하려면 학생이 2명 이상이어야 합니다.', actions: [{ text: '확인', className: 'bg-indigo-600 text-white', callback: closeModal }]}); return; }
+            showModal({
+                title: '일정 생성', body: '새로운 경기 일정을 생성하면 기존 기록이 모두 삭제됩니다. 계속하시겠습니까?',
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500', callback: closeModal },
+                    { text: '생성', className: 'bg-green-600 text-white hover:bg-green-700', callback: () => {
+                        const players = students.filter(s => s.classId == selectedClass.id);
+                        games = games.filter(g => g.classId != selectedClass.id); 
+                        let localPlayers = [...players];
+                        if (localPlayers.length % 2 !== 0) { localPlayers.push({ id: 'BYE', name: 'BYE' }); }
+                        const numRounds = localPlayers.length - 1;
+                        for (let i = 0; i < numRounds; i++) {
+                            for (let j = 0; j < localPlayers.length / 2; j++) {
+                                const player1 = localPlayers[j], player2 = localPlayers[localPlayers.length - 1 - j];
+                                if (player1.id !== 'BYE' && player2.id !== 'BYE') {
+                                    games.push({ id: generateUUID(), classId: selectedClass.id, player1Id: player1.id, player2Id: player2.id, player1Score: null, player2Score: null, isCompleted: false, isHighlighted: false, note: '', completionDate: '' });
+                                }
+                            }
+                            localPlayers.splice(1, 0, localPlayers.pop());
+                        }
+                        saveData(); renderAll(); closeModal();
+                    }}
+                ]
+            });
+        };
+
+        window.league_clearAllHighlights = function() {
+            if (!selectedClass || !games.some(g => g.classId == selectedClass.id && g.isHighlighted)) { showModal({title: '알림', body: '강조된 경기가 없습니다.', actions: [{ text: '확인', className: 'bg-indigo-600 text-white', callback: closeModal }]}); return; }
+            games.forEach(game => { if (game.classId == selectedClass.id) game.isHighlighted = false; });
+            saveData(); renderGames();
+        };
+
+        window.league_toggleHighlightGame = function(id) {
+            const game = games.find(g => g.id == id);
+            if (game) { game.isHighlighted = !game.isHighlighted; saveData(); renderGames(); }
+        };
+        
+        window.league_updateScore = function(id, player, score) {
+            const gameIndex = games.findIndex(g => g.id == id);
+            if (gameIndex === -1) return;
+            const updatedGame = { ...games[gameIndex] };
+            const parsedScore = parseInt(score, 10);
+            updatedGame[player + 'Score'] = (score.trim() === '' || isNaN(parsedScore)) ? null : parsedScore;
+            const wasCompleted = updatedGame.isCompleted;
+            updatedGame.isCompleted = (updatedGame.player1Score !== null && updatedGame.player2Score !== null);
+            if (updatedGame.isCompleted && !wasCompleted) {
+                const now = new Date();
+                updatedGame.completionDate = `${now.getFullYear().toString().slice(-2)}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            } else if (!updatedGame.isCompleted && wasCompleted) { updatedGame.completionDate = ''; }
+            games[gameIndex] = updatedGame; saveData();
+            const row = gamesTableBodyEl.querySelector(`tr[data-game-id="${id}"]`);
+            if (row) {
+                row.children[6].innerHTML = `<span class="px-2 py-1 text-xs font-semibold rounded-full ${updatedGame.isCompleted ? 'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-100' : 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100'}">${updatedGame.isCompleted ? '완료' : '대기'}</span>`;
+                row.children[7].textContent = updatedGame.completionDate || '';
+            }
+            renderGameStats(); updateRankings();
+            if (!rankingPopupEl.classList.contains('hidden')) { updateRankings(document.getElementById('popupRankingsBody')); }
+        };
+
+        window.league_updateNote = function(id, note) {
+            const game = games.find(g => g.id == id);
+            if (game) { game.note = note.trim(); saveData(); }
+        };
+        
+        window.league_openRankingPopup = function() {
+            if (!selectedClass) { showModal({ title: '알림', body: '먼저 반을 선택해주세요.', actions: [{ text: '확인', className: 'bg-indigo-600 text-white', callback: closeModal }]}); return; }
+            document.getElementById('popupTitle').textContent = `${selectedClass.name} - 실시간 순위표`;
+            updateRankings(document.getElementById('popupRankingsBody'));
+            rankingPopupEl.classList.remove('hidden'); rankingPopupEl.classList.add('flex');
+        };
+
+        window.league_closeRankingPopup = function() {
+            rankingPopupEl.classList.add('hidden'); rankingPopupEl.classList.remove('flex');
+        };
+
+        window.league_exportToExcel = function() {
+            if (!selectedClass) { showModal({ title: '알림', body: '먼저 내보낼 반을 선택해주세요.', actions: [{ text: '확인', className: 'bg-indigo-600 text-white', callback: closeModal }]}); return; }
+            const wb = XLSX.utils.book_new();
+            // Ranking Sheet
+            const ranks = students.filter(s => s.classId == selectedClass.id).map(st => {
+                let w=0, l=0, d=0, p=0, gp=0;
+                games.filter(g => g.classId == selectedClass.id && g.isCompleted).forEach(g => {
+                    if (g.player1Id == st.id) { gp++; if (g.player1Score > g.player2Score) { w++; p += 3; } else if (g.player1Score < g.player2Score) l++; else { d++; p++; } }
+                    else if (g.player2Id == st.id) { gp++; if (g.player2Score > g.player1Score) { w++; p += 3; } else if (g.player2Score < g.player1Score) l++; else { d++; p++; } }
+                }); return { name: st.name, gamesPlayed: gp, wins: w, losses: l, draws: d, points: p };
+            }).sort((a, b) => b.points - a.points || b.wins - a.wins);
+            let lastPoints = -1, lastWins = -1, currentRank = 0;
+            const rankingData = [["순위", "이름", "경기수", "승", "패", "무", "승점"], ...ranks.map((p, i) => { if (p.points !== lastPoints || p.wins !== lastWins) currentRank = i + 1; lastPoints = p.points; lastWins = p.wins; return [currentRank, p.name, p.gamesPlayed, p.wins, p.losses, p.draws, p.points]; })];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rankingData), "순위표");
+            // Schedule Sheet
+            const scheduleData = [["번호", "선수 1", "점수1", "점수2", "선수 2", "상태", "입력 일시", "비고"], ...games.filter(g => g.classId == selectedClass.id).map((game, i) => { const p1 = students.find(s => s.id == game.player1Id), p2 = students.find(s => s.id == game.player2Id); return [i + 1, p1?.name, game.player1Score, game.player2Score, p2?.name, game.isCompleted ? '완료' : '대기', game.completionDate || '', game.note || '']; })];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(scheduleData), "경기 일정");
+            const dateString = new Date().toISOString().slice(0,10).replace(/-/g,"");
+            XLSX.writeFile(wb, `${selectedClass.name}_리그전_${dateString}.xlsx`);
+        };
+
+        window.league_printRankings = function() {
+            if (!selectedClass) return;
+            const printHtml = document.getElementById('rankingsTable').outerHTML;
+            const printDate = new Date().toLocaleString('ko-KR');
+            const printWindow = window.open('', '', 'height=800,width=800');
+            printWindow.document.write(`<html><head><title>순위표 인쇄</title><style>body{font-family:'Noto Sans KR',sans-serif;margin:2rem;}h1{text-align:center;}p{text-align:right;font-size:0.8rem;color:#555;}table{width:100%;border-collapse:collapse;margin-top:1rem;}th,td{border:1px solid #ddd;padding:8px;text-align:center;}th{background-color:#f2f2f2;}@media print{body{-webkit-print-color-adjust:exact;}}</style></head><body><h1>${selectedClass.name} 순위표</h1><p>인쇄 일시: ${printDate}</p>${printHtml}</body></html>`);
+            printWindow.document.close(); printWindow.focus(); setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);
+        };
+
+        window.league_exportData = function() {
+            const dataStr = JSON.stringify({ classes, students, games });
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = `league_backup_${new Date().toISOString().slice(0,10).replace(/-/g,"")}.json`;
+            a.click(); URL.revokeObjectURL(a.href);
+        };
+        
+        window.league_importData = function(event) {
+            const file = event.target.files[0]; if(!file) return;
+            showModal({
+                title: '데이터 복원', body: '데이터를 복원하면 현재 모든 리그전 데이터가 사라집니다. 계속하시겠습니까?',
+                actions: [
+                    { text: '취소', className: 'bg-gray-200 dark:bg-gray-600', callback: () => { event.target.value = ''; closeModal(); }},
+                    { text: '복원', className: 'bg-red-600 text-white', callback: () => {
+                        const reader = new FileReader();
+                        reader.onload = e => {
+                            try {
+                                const data = JSON.parse(e.target.result);
+                                classes = data.classes || []; students = data.students || []; games = data.games || [];
+                                selectedClass = null; classDashboardEl.classList.add('hidden'); noClassSelectedEl.classList.remove('hidden'); mainTitleEl.textContent = '리그전 관리';
+                                saveData(); league_loadData();
+                            } catch (error) { showModal({title: '오류', body: '잘못된 파일 형식입니다.', actions: [{ text: '확인', className: 'bg-indigo-600 text-white', callback: closeModal }]}); } 
+                            finally { event.target.value = ''; }
+                        };
+                        reader.readAsText(file); closeModal();
+                    }}
+                ]
+            });
+        };
+        
+        window.league_handleEnter = function(e, callback) { if (e.key === 'Enter') callback(); };
+    })();
+
+    // --- Tournament Program Logic ---
+    (function() {
+        const appState = { tournaments: [], activeTournamentId: null, };
+        let state = {};
+
+        const $ = s => document.querySelector(s);
+        const $$ = s => Array.from(document.querySelectorAll(s));
+        const setStatus = (t)=> $("#statusText").textContent = t || "";
+
+        function generateId() { return 't_' + Date.now().toString(36) + Math.random().toString(36).substring(2); }
+        function parseTeams(raw){ return Array.from(new Set((raw || "").split(/\r?\n/).map(s=>s.trim()).filter(Boolean))); }
+        function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+        function nextPow2(n){ let p=1; while(p<n) p<<=1; return p; }
+        
+        function showPlaceholder() { $('#placeholder-view').style.display = 'flex'; $('#bracket-container').style.display = 'none'; $('#settingsPanel').style.display = 'none'; }
+        function showBracketView() { $('#placeholder-view').style.display = 'none'; $('#bracket-container').style.display = 'block'; $('#settingsPanel').style.display = 'block'; }
+        
+        let matchIdSeq = 1;
+        function buildSingleElimination(teams){
+            const n = teams.length; if (n < 2) return []; matchIdSeq = 1; const size = nextPow2(n);
+            const seeded = state.seeding === "random" ? shuffle([...teams]) : [...teams];
+            const firstRoundTeams = Array.from({length: size}, (_, i) => seeded[i] || null);
+            const rounds = []; let current = [];
+            for(let i=0; i<size; i+=2){ current.push(makeMatch(0, i/2, firstRoundTeams[i], firstRoundTeams[i+1])); }
+            rounds.push(current); let roundIdx = 1;
+            while(current.length > 1){
+                const next = [];
+                for(let i=0; i<current.length; i+=2){
+                    const parent = makeMatch(roundIdx, i/2, null, null);
+                    current[i].parentId = parent.id; current[i+1].parentId = parent.id; next.push(parent);
+                }
+                rounds.push(next); current = next; roundIdx++;
+            }
+            applyByeWinners(rounds); return rounds;
+        }
+        function makeMatch(roundIdx, slotIdx, teamA, teamB){ return { id: "m" + (matchIdSeq++), roundIdx, slotIdx, teamA: teamA ?? null, teamB: teamB ?? null, scoreA: null, scoreB: null, winner: null, parentId: null }; }
+        function applyByeWinners(rounds){
+            if (!rounds || !rounds[0]) return;
+            for(const match of rounds[0]){
+                if(match.teamA && !match.teamB) match.winner = match.teamA; else if(!match.teamA && match.teamB) match.winner = match.teamB;
+                if(match.winner) pushWinner(match, rounds);
+            }
+        }
+        function findMatchById(id, rounds){ for(const r of rounds) for(const m of r) if(m.id === id) return m; return null; }
+        function pushWinner(childMatch, rounds){
+            if(!childMatch.parentId || !childMatch.winner) return;
+            const parent = findMatchById(childMatch.parentId, rounds); if(!parent) return;
+            if (childMatch.slotIdx % 2 === 0) parent.teamA = childMatch.winner; else parent.teamB = childMatch.winner;
+        }
+
+        function onScoreInput(matchId, side, value){
+            const m = findMatchById(matchId, state.rounds); if(!m) return;
+            const v = (value === "" ? null : Number(value));
+            if(side === "A") m.scoreA = v; else m.scoreB = v;
+            const oldWinner = m.winner; m.winner = null;
+            if(Number.isFinite(m.scoreA) && Number.isFinite(m.scoreB)){
+                if(m.scoreA === m.scoreB) setStatus("동점은 허용되지 않습니다."); else { m.winner = (m.scoreA > m.scoreB) ? m.teamA : m.teamB; setStatus(""); }
+            }
+            if(oldWinner !== m.winner) propagateWinners();
+            renderRounds(); doSave();
+        }
+        function propagateWinners() { state.rounds.forEach(round => round.forEach(match => { if (match.winner) pushWinner(match, state.rounds); })); }
+
+        function renderRounds(){
+            const wrap = $("#rounds"); wrap.innerHTML = "";
+            if(!appState.activeTournamentId || !state || !state.rounds || state.rounds.length === 0){
+                $('#bracket-container').style.display = 'none'; 
+                if (appState.activeTournamentId) $('#bracket-container').style.display = 'block';
+                wrap.innerHTML = `<p class="text-gray-500 p-4">${appState.activeTournamentId ? "설정에서 정보를 입력하고 '대진표 생성' 버튼을 클릭하세요." : "새 토너먼트를 만들거나 목록에서 기존 토너먼트를 선택하세요."}</p>`;
+                $("#svgLayer").innerHTML = ""; return;
+            }
+            $('#bracket-container').style.display = 'block';
+            const labels = makeRoundLabels(state.rounds.length);
+            state.rounds.forEach((round, rIdx)=>{
+                const roundCol = document.createElement("div"); roundCol.className = "round";
+                roundCol.innerHTML = `<div class="round-title">${labels[rIdx] || `R${rIdx+1}`}</div>`;
+                const matchGroup = document.createElement('div'); matchGroup.className = 'match-group';
+                round.forEach(match => matchGroup.appendChild(renderMatchCard(match, rIdx)));
+                roundCol.appendChild(matchGroup); wrap.appendChild(roundCol);
+            });
+            requestAnimationFrame(tournament_drawSvgLines);
+        }
+        
+        function renderMatchCard(m, rIdx){
+            const el = document.createElement("div"); el.className = "match"; el.dataset.matchId = m.id;
+            if (m.winner) el.classList.add("completed", `completed-r${rIdx % 5}`);
+            if (m.teamA && m.teamB && !m.winner) el.classList.add("next-match");
+            const aName = m.teamA ?? "(미정)", bName = m.teamB ?? "(미정)";
+            const winA = m.winner && m.winner === m.teamA, winB = m.winner && m.winner === m.teamB;
+            const isByeMatch = (m.teamA && !m.teamB) || (!m.teamA && m.teamB);
+            let rankBadgeA = '', rankBadgeB = '';
+            const finalRoundIdx = state.rounds.length - 1;
+            if (finalRoundIdx >= 0 && state.rounds[finalRoundIdx][0].winner) {
+                const tournamentWinner = state.rounds[finalRoundIdx][0].winner;
+                const runnerUp = tournamentWinner === state.rounds[finalRoundIdx][0].teamA ? state.rounds[finalRoundIdx][0].teamB : state.rounds[finalRoundIdx][0].teamA;
+                if (rIdx === finalRoundIdx) {
+                    if (m.teamA === tournamentWinner) rankBadgeA = '<span class="rank-badge gold">🏆 1위</span>';
+                    if (m.teamB === tournamentWinner) rankBadgeB = '<span class="rank-badge gold">🏆 1위</span>';
+                    if (m.teamA === runnerUp) rankBadgeA = '<span class="rank-badge silver">🥈 2위</span>';
+                    if (m.teamB === runnerUp) rankBadgeB = '<span class="rank-badge silver">🥈 2위</span>';
+                }
+                if (state.rounds.length > 1 && rIdx === finalRoundIdx - 1) {
+                    if (m.winner !== m.teamA && m.teamA) rankBadgeA = '<span class="rank-badge bronze">🥉 3위</span>';
+                    if (m.winner !== m.teamB && m.teamB) rankBadgeB = '<span class="rank-badge bronze">🥉 3위</span>';
+                }
+            }
+            el.innerHTML = `
+                <div class="teams">
+                    <div class="team ${winA?'win':(m.winner? 'lose':'')}">${rankBadgeA}${aName ? `<span>${aName}</span>` : `<span class="bye">부전승</span>`}${winA ? (isByeMatch ? '<span class="bye-badge">부전승</span>' : '<span class="win-badge">승</span>') : ''}</div>
+                    <input type="number" inputmode="numeric" class="score" min="0" ${m.teamA && m.teamB ? "" : "disabled"} value="${m.scoreA ?? ''}" aria-label="${aName} 점수" />
+                    <div class="team ${winB?'win':(m.winner? 'lose':'')}">${rankBadgeB}${bName ? `<span>${bName}</span>` : `<span class="bye">부전승</span>`}${winB ? (isByeMatch ? '<span class="bye-badge">부전승</span>' : '<span class="win-badge">승</span>') : ''}</div>
+                    <input type="number" inputmode="numeric" class="score" min="0" ${m.teamA && m.teamB ? "" : "disabled"} value="${m.scoreB ?? ''}" aria-label="${bName} 점수" />
+                </div>`;
+            const [scoreA, scoreB] = el.querySelectorAll(".score");
+            scoreA?.addEventListener("input",(e)=> onScoreInput(m.id, "A", e.target.value));
+            scoreB?.addEventListener("input",(e)=> onScoreInput(m.id, "B", e.target.value));
+            return el;
+        }
+        function makeRoundLabels(count){
+            if(count<=0) return []; if(count===1) return ["결승"]; if(count===2) return ["준결승","결승"];
+            if(count===3) return ["8강","4강","결승"]; if(count===4) return ["16강","8강","4강","결승"];
+            if(count===5) return ["32강","16강","8강","4강","결승"];
+            return Array.from({length:count}, (_,i)=> `R${i+1}`);
+        }
+
+        window.tournament_drawSvgLines = function (){
+            const svg = $("#svgLayer"), roundsEl = $("#rounds"); if(!svg || !roundsEl) return; svg.innerHTML = "";
+            const scrollW = roundsEl.scrollWidth, scrollH = roundsEl.scrollHeight;
+            svg.setAttribute("viewBox", `0 0 ${scrollW} ${scrollH}`); svg.setAttribute("width", scrollW); svg.setAttribute("height", scrollH);
+            const roundCols = Array.from(roundsEl.querySelectorAll(".round")); if(roundCols.length < 2) return;
+            for(let r=0; r < roundCols.length-1; r++){
+                roundCols[r].querySelectorAll(".match").forEach(card => {
+                    const m = findMatchById(card.dataset.matchId, state.rounds); if(!m || !m.parentId) return;
+                    const parentCard = roundCols[r+1].querySelector(`.match[data-match-id="${m.parentId}"]`); if(!parentCard) return;
+                    const a = getCenterRight(card, roundsEl), b = getCenterLeft(parentCard, roundsEl);
+                    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+                    path.setAttribute("d", `M ${a.x} ${a.y} C ${a.x + Math.abs(b.x - a.x) * 0.5} ${a.y}, ${b.x - Math.abs(b.x - a.x) * 0.5} ${b.y}, ${b.x} ${b.y}`);
+                    path.setAttribute("fill","none"); path.setAttribute("stroke", m.winner ? "var(--accent)" : "var(--line)");
+                    path.setAttribute("stroke-width", m.winner ? "2" : "1.5"); path.setAttribute("stroke-linecap", "round");
+                    svg.appendChild(path);
+                });
+            }
+        };
+        function getCenterRight(el, container){ const r1 = el.getBoundingClientRect(), rC = container.getBoundingClientRect(); return { x: (r1.right - rC.left) + container.scrollLeft, y: (r1.top - rC.top) + r1.height/2 + container.scrollTop }; }
+        function getCenterLeft(el, container){ const r1 = el.getBoundingClientRect(), rC = container.getBoundingClientRect(); return { x: (r1.left - rC.left) + container.scrollLeft, y: (r1.top - rC.top) + r1.height/2 + container.scrollTop }; }
+        window.addEventListener("resize", ()=> requestAnimationFrame(tournament_drawSvgLines));
+        $("#roundsContainer").addEventListener("scroll", ()=> requestAnimationFrame(tournament_drawSvgLines), {passive:true});
+
+        const STORAGE_KEY = "tournament_manager_v3.0";
+        function doSave(){
+            if (!appState.activeTournamentId) return;
+            state.name = $("#tournamentName").value.trim(); state.sport = $("#sportName").value.trim(); state.teams = parseTeams($("#teamsInput").value);
+            state.format = $$("input[name='format']:checked")[0]?.value || 'single'; state.seeding = $$("input[name='seeding']:checked")[0]?.value || 'input';
+            const index = appState.tournaments.findIndex(t => t.id === appState.activeTournamentId);
+            if(index > -1) appState.tournaments[index] = { ...state }; else appState.tournaments.push({ ...state });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.tournaments));
+            setStatus("자동 저장되었습니다."); renderTournamentList();
+        }
+
+        window.tournament_loadApp = function() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            try { appState.tournaments = JSON.parse(raw) || []; } catch(e) { appState.tournaments = []; }
+            renderTournamentList(); showPlaceholder();
+        };
+
+        function doDelete(id_to_delete){
+            if (!confirm("정말로 이 토너먼트를 삭제하시겠습니까? 되돌릴 수 없습니다.")) return;
+            appState.tournaments = appState.tournaments.filter(t => t.id !== id_to_delete);
+            if(appState.activeTournamentId === id_to_delete) { appState.activeTournamentId = null; state = {}; resetForm(); showPlaceholder(); }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.tournaments));
+            renderTournamentList(); setStatus("토너먼트를 삭제했습니다.");
+        }
+        function renderTournamentList() {
+            const listEl = $("#tournamentList");
+            listEl.innerHTML = appState.tournaments.length === 0 ? `<p class="text-sm text-gray-500 text-center p-2">저장된 토너먼트가 없습니다.</p>` : "";
+            appState.tournaments.forEach(t => {
+                const card = document.createElement("div");
+                card.className = `tournament-card ${t.id === appState.activeTournamentId ? 'active' : ''}`;
+                card.dataset.id = t.id; card.setAttribute('role', 'option');
+                card.innerHTML = `<div><div class="name">${t.name || "이름 없는 토너먼트"}</div><div class="details">${t.sport || "종목 미지정"} · ${t.teams.length}팀</div></div><button class="delete-btn" data-id="${t.id}" aria-label="${t.name} 토너먼트 삭제">삭제</button>`;
+                card.addEventListener('click', (e) => { if (e.target.classList.contains('delete-btn')) { doDelete(e.target.dataset.id); e.stopPropagation(); } else handleSelectTournament(t.id); });
+                listEl.appendChild(card);
+            });
+        }
+        function build(){
+            if (!appState.activeTournamentId) { setStatus("활성화된 토너먼트가 없습니다."); return; }
+            state.name = $("#tournamentName").value.trim(); state.sport = $("#sportName").value.trim();
+            state.format = $$("input[name='format']:checked")[0].value; state.seeding = $$("input[name='seeding']:checked")[0].value;
+            state.teams = parseTeams($("#teamsInput").value);
+            if(state.teams.length < 2){ setStatus("팀이 2개 이상 필요합니다."); state.rounds = []; } 
+            else { state.rounds = (state.format === "single") ? buildSingleElimination(state.teams) : []; setStatus("대진표를 생성/업데이트했습니다."); }
+            renderRounds(); doSave();
+        }
+        function resetForm(){
+            $("#tournamentName").value = state.name ?? ""; $("#sportName").value = ""; $("#teamsInput").value = "";
+            $$("input[name='format']").forEach(r=> r.checked = (r.value==="single")); $$("input[name='seeding']").forEach(r=> r.checked = (r.value==="input"));
+            if(state && state.id) { state = { ...state, sport:"", teams: [], rounds: [], seeding:"input", format:"single" }; renderRounds(); }
+            setStatus("입력 양식을 초기화했습니다.");
+        }
+        function handleSelectTournament(id) {
+            appState.activeTournamentId = id;
+            state = JSON.parse(JSON.stringify(appState.tournaments.find(t => t.id === id)));
+            $("#tournamentName").value = state.name ?? ""; $("#sportName").value = state.sport ?? ""; $("#teamsInput").value = (state.teams ?? []).join("\n");
+            $$("input[name='format']").forEach(r=> r.checked = (r.value === state.format)); $$("input[name='seeding']").forEach(r=> r.checked = (r.value === state.seeding));
+            showBracketView(); renderTournamentList(); renderRounds(); setStatus(`'${state.name}' 토너먼트를 불러왔습니다.`);
+        }
+        function handleCreateNew() {
+            const nameInput = $("#newTournamentNameInput"); const newName = nameInput.value.trim();
+            if (!newName) { setStatus("새 토너먼트의 이름을 입력하세요."); nameInput.focus(); return; }
+            const newId = generateId();
+            const newTournament = { id: newId, name: newName, sport: "", format: "single", teams: [], seeding: "input", rounds: [] };
+            appState.tournaments.unshift(newTournament); appState.activeTournamentId = newId;
+            nameInput.value = ""; handleSelectTournament(newId);
+        }
+        
+        $("#btnBuild").addEventListener("click", build);
+        $("#btnReset").addEventListener("click", resetForm);
+        $("#btnAddNew").addEventListener("click", handleCreateNew);
+        $("#newTournamentNameInput").addEventListener("keydown", (e) => { if (e.key === "Enter") handleCreateNew(); });
+    })();
+
+    // --- Final Initializer ---
+    document.addEventListener('DOMContentLoaded', () => {
+        setupShell();
+        league_loadData();
+        tournament_loadApp();
+    });
+</script>
+</body>
+</html>
